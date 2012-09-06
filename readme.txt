@@ -2,7 +2,7 @@
 Contributors: nacin
 Tags: footnotes, endnotes, shortcode, references
 Requires at least: 2.5
-Tested up to: 3.1-alpha
+Tested up to: 3.5
 Stable tag: 0.3
 
 Create simple, elegant footnotes on your site. Use the [ref] shortcode and the plugin takes care of the rest.
