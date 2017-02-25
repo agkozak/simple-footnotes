@@ -1,10 +1,10 @@
 <?php
 /*
- * Plugin Name: Simple Footnotes
+ * Plugin Name: Simple Footnotes (Fork)
  * Plugin URI: http://wordpress.org/extend/plugins/simple-footnotes/
  * Plugin Description: Create simple, elegant footnotes on your site. Use the <code>[ref]</code> shortcode ([ref]My note.[/ref]) and the plugin takes care of the rest. There's also a <a href="options-reading.php">setting</a> that enables you to move the footnotes below your page links, for those who paginate posts.
  * Version: 0.4
- * Author: Andrew Nacin
+ * Author: Andrew Nacin; modified by Alexandros Kozák
  * Author URI: http://andrewnacin.com/
  * Text Domain: simple-footnotes
  */
@@ -22,21 +22,21 @@ class nacin_footnotes {
 
 	// DB version, for schema upgrades.
 	var $db_version = 1;
-	
+
 	//instance
 	static $instance;
-	
+
 	/**
 	 * Fires when class is constructed, adds init hook
 	 */
-	function nacin_footnotes() {
-	
+	function __construct() {
+
 		//allow this instance to be called from outside the class
 		self::$instance = $this;
-		
+
 		//add init hook
 		add_action( 'init', array( &$this, 'init' ) );
-		
+
 		//add admin panel
 		add_action( 'admin_init', array( &$this, 'admin_init' ) );
 
@@ -49,7 +49,7 @@ class nacin_footnotes {
 
 		//register shortcode
 		add_shortcode( 'ref', array( &$this, 'shortcode' ) );
-		
+
 		//add high-priority hook to clear footnotes array
 		add_filter( 'the_content', array( &$this, 'clear_footnotes' ), 1 );
 
@@ -65,9 +65,9 @@ class nacin_footnotes {
 			add_filter( 'the_content', array( &$this, 'the_content' ), 12 );
 
 		//Allow logged in users to add footnotes to comments
-		if ( is_user_logged_in() && current_user_can( 'edit_posts' ) ) 
+		if ( is_user_logged_in() && current_user_can( 'edit_posts' ) )
 		    add_filter( 'comment_text', array( &$this, 'do_shortcode_comments' ), 11 );
-			
+
 		//pagination
 		add_filter( 'footnote_number', array( &$this, 'maybe_paginate_footnotes' ), 10, 4 );
 
@@ -77,22 +77,22 @@ class nacin_footnotes {
 	 * Admin init Callback
 	 */
 	function admin_init() {
-	
+
 		//check if DB needs to be upgraded
 		if ( false === $this->options || ! isset( $this->options['db_version'] ) || $this->options['db_version'] < $this->db_version ) {
-			
+
 			//init options array
 			if ( ! is_array( $this->options ) )
 				$this->options = array();
-				
-			//establish DB version 
+
+			//establish DB version
 			$current_db_version = isset( $this->options['db_version'] ) ? $this->options['db_version'] : 0;
-			
+
 			//run upgrade and store new version #
 			$this->upgrade( $current_db_version );
 			$this->options['db_version'] = $this->db_version;
 			update_option( $this->option_name, $this->options );
-			
+
 		}
 
 		load_plugin_textdomain( 'simple-footnotes' );
@@ -100,7 +100,7 @@ class nacin_footnotes {
 		//add options fields
 		add_settings_field( 'simple_footnotes_placement', __( 'Footnotes placement', 'simple-footnotes' ), array( &$this, 'settings_field_cb' ), 'reading' );
 		register_setting( 'reading', 'simple_footnotes', array( &$this, 'register_setting_cb' ) );
-	
+
 	}
 
 	/**
@@ -109,33 +109,33 @@ class nacin_footnotes {
 	 * @returns string the sanitized input
 	 */
 	function register_setting_cb( $input ) {
-		
+
 		//set defaults
 		$output = array( 'db_version' => $this->db_version, 'placement' => 'content' );
-		
+
 		//if placement is specified as page links, change
 		if ( ! empty( $input['placement'] ) && 'page_links' == $input['placement'] )
 			$output['placement'] = 'page_links';
-			
+
 		//return
 		return $output;
 	}
-	
+
 	/**
 	 * Callback to output settings field UI
 	 */
 	function settings_field_cb() {
-	
+
 		//options for where the footnotes can be
 		$fields = array(
 			'content'    => __( 'Below content',    'simple-footnotes' ),
 			'page_links' => __( 'Below page links', 'simple-footnotes' ),
 		);
-		
+
 		//loop through each option and output
-		foreach ( $fields as $field => $label ) 
+		foreach ( $fields as $field => $label )
 			echo '<label><input type="radio" name="simple_footnotes[placement]" value="' . $field . '"' . checked( $this->placement, $field, false ) . '> ' . $label . '</label><br/>';
-		
+
 	}
 
 	/**
@@ -143,10 +143,10 @@ class nacin_footnotes {
 	 * @param int $current_db_version the current DB version
 	 */
 	function upgrade( $current_db_version ) {
-	
+
 		if ( $current_db_version < 1 )
 			$this->options['placement'] = 'content';
-	
+
 	}
 
 	/**
@@ -155,7 +155,7 @@ class nacin_footnotes {
 	 * @param string $content the content within the short code tags
 	 */
 	function shortcode( $atts, $content = null ) {
-	
+
 		//if no footnote is provided, kick
 		if ( null === $content )
 			return;
@@ -168,14 +168,14 @@ class nacin_footnotes {
 			$type = 'post';
 			$id = $GLOBALS['id'];
 		}
-		
+
 		//If the ID is not already in the array, create the array
 		if ( ! isset( $this->footnotes[ $type ][ $id ] ) )
 			$this->footnotes[ $type ][ $id ] = array( 0 => false );
-		
+
 		//store the footnote in the array
 		$this->footnotes[ $type ][ $id ][] = $content;
-		
+
 		//Calculate the footnote #
 		$note = apply_filters( 'footnote_number', count( $this->footnotes[ $type ][ $id ] ) - 1, $id, $content, $type );
 
@@ -194,10 +194,10 @@ class nacin_footnotes {
 
 		if ( 'content' == $this->placement || ! $GLOBALS['multipage'] )
 			return $this->footnotes( $content );
-			
+
 		return $content;
 	}
-	
+
 	/**
 	 * Callback to clear collected footnotes incase the_content is called more than once
 	 * @param string $content the content
@@ -225,11 +225,11 @@ class nacin_footnotes {
 	 * @returns string the content with footnotes
 	 */
 	function footnotes( $content ) {
-		
+
 		global $numpages;
 		global $pagenow;
 		global $post;
-	
+
 		//establish type
 		if ( current_filter() == 'comment_text' ) {
 			$type = 'comment';
@@ -240,35 +240,35 @@ class nacin_footnotes {
 			$id = $GLOBALS['id'];
 			$anchor = 'note-';
 		}
-		
+
 		//if there are no footnotes, simply return
 		if ( empty( $this->footnotes[ $type ][ $id ] ) )
 			return $content;
-		
-		//post is paginated, make sure footnotes stay consistent	
-		if ( $numpages > 1 ) 
+
+		//post is paginated, make sure footnotes stay consistent
+		if ( $numpages > 1 )
 			$start = $this->pagination[ $id ][ $pagenow ];
 		else
 			$start = 0;
-		
+
 		//append footnotes to content and format
 		$content .= '<div class="simple-footnotes">';
-		
+
 		if ( 'post' == $type ) {
 			load_plugin_textdomain( 'simple-footnotes' );
 			$content .= '<p class="notes">' . __( 'Notes:', 'simple-footnotes' ) . '</p><ol start="'. ( $start + 1 ) .'">';
 		}
-			
+
 		//loop through footnotes and format output
 		foreach ( array_filter( $this->footnotes[ $type ][ $id ] ) as $num => $note ) {
 			$num = apply_filters( 'footnote_number', $num, $id, $note, $type );
 			$content .= '<li id="' . $anchor . $id . '-' . $num . '">' . do_shortcode( $note ) .
 				' <a href="#return-' . $anchor . $id . '-' . $num . '">&#8617;</a></li>';
 		}
-				
+
 		//close tags
 		$content .= '</ol></div>';
-		
+
 		//return
 		return $content;
 	}
@@ -279,40 +279,40 @@ class nacin_footnotes {
 	 * @returns string the modified content
 	 */
 	function do_shortcode_comments( $content ) {
-	
+
 		//get a lis tof all short code tags
 		global $shortcode_tags;
-		
+
 		//save the original list
 		$orig_shortcode_tags = $shortcode_tags;
-		
+
 		//remove all short codes from comments
 		remove_all_shortcodes();
-		
+
 		//add ours back in
 		add_shortcode( 'ref', array( &$this, 'footnotes' ) );
-		
+
 		//run comment through short codes
 		$content = do_shortcode( $content );
-		
+
 		//return short codes to original state
 		$shortcode_tags = $orig_shortcode_tags;
-		
+
 		//return content
 		return $content;
 	}
-	
+
 	/**
 	 * Given a footnote, figures out the absolute numbering for that footnote
 	 * @param string $content the content (all)
 	 * @param string $footnote the footnote
 	 * @returns int the zero indexed absolute footnote
-	 */	
+	 */
 	function get_footnote_absolute_index( $content, $footnote ) {
 		preg_match_all('/(.?)\[(ref)\b(.*?)(?:(\/))?\](?:(.+?)\[\/\2\])?(.?)/s', $content, $matches );
 		return array_search( $footnote, $matches[5] );
 	}
-	
+
 	/**
 	 * If post is paginated adjusts the footnote numbering to remain consistent across pages
 	 * @param int $number the original footnote number
@@ -325,22 +325,22 @@ class nacin_footnotes {
 		global $numpages;
 		global $pagenow;
 		global $post;
-		
+
 		//don't worry about pagination for comments
 		if ( $type == 'comment' )
 			return $number;
-		
+
 		//if the post isn't paginated, just return the footnote number as is
 		if ( !isset( $numpages ) || !$numpages == 1 )
 			return $number;
-		
-		//if this is the first footnote being processed on this page, figure out the starting # for this page's footnotes	
-		if ( !isset( $this->pagination[ $postID ][ $pagenow ] ) ) 
+
+		//if this is the first footnote being processed on this page, figure out the starting # for this page's footnotes
+		if ( !isset( $this->pagination[ $postID ][ $pagenow ] ) )
 			$this->pagination[ $postID ][ $pagenow ] = $this->get_footnote_absolute_index( $post->post_content, $content );
-		
+
 		return $this->pagination[ $postID ][ $pagenow ] + $number;
-	} 
-	
+	}
+
 }
 
 new nacin_footnotes();
